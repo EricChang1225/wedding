@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>幸福關鍵詞</title>
+<style>
+body{
+    font-family: Arial, "Microsoft JhengHei", sans-serif;
+    background:#fff7f8;
+    margin:0;
+    padding:20px;
+    text-align:center;
+}
+.card{
+    max-width:500px;
+    margin:auto;
+    background:white;
+    border-radius:20px;
+    padding:25px;
+    box-shadow:0 4px 15px rgba(0,0,0,.15);
+}
+h1{color:#d94f70;}
+#scratch{
+    position:relative;
+    margin:auto;
+    width:320px;
+    height:180px;
+}
+#result{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:32px;
+    font-weight:bold;
+    color:#d94f70;
+    background:#fff;
+    border-radius:15px;
+    border:2px solid #f3c7d1;
+}
+canvas{
+    position:absolute;
+    inset:0;
+    border-radius:15px;
+}
+button{
+    background:#d94f70;
+    color:white;
+    border:none;
+    padding:12px 20px;
+    border-radius:10px;
+    font-size:18px;
+    cursor:pointer;
+}
+.note{margin-top:20px;color:#666;}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>💍 幸福關鍵詞 💍</h1>
+<p>請用手指刮開灰色區域，揭曉你的幸福關鍵詞</p>
+
+<div id="scratch">
+    <div id="result"></div>
+    <canvas id="canvas" width="320" height="180"></canvas>
+</div>
+
+<p class="note">祝福語將隨機出現</p>
+<button onclick="resetCard()">重新抽一張</button>
+</div>
+
+<script>
+const keywords=[
+"百年好合","永浴愛河","天作之合","佳偶天成","白頭偕老",
+"永結同心","琴瑟和鳴","幸福美滿","甜甜蜜蜜","相知相守"
+];
+
+const result=document.getElementById("result");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+function drawCover(){
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='#BDBDBD';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='white';
+    ctx.font='28px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('刮開這裡',160,95);
+}
+
+function randomWord(){
+    return keywords[Math.floor(Math.random()*keywords.length)];
+}
+
+function resetCard(){
+    result.innerHTML="❤️ "+randomWord();
+    drawCover();
+}
+
+let drawing=false;
+
+function scratch(x,y){
+    ctx.globalCompositeOperation='destination-out';
+    ctx.beginPath();
+    ctx.arc(x,y,18,0,Math.PI*2);
+    ctx.fill();
+}
+
+canvas.addEventListener('pointerdown',()=>drawing=true);
+canvas.addEventListener('pointerup',()=>drawing=false);
+canvas.addEventListener('pointerleave',()=>drawing=false);
+
+canvas.addEventListener('pointermove',(e)=>{
+    if(!drawing) return;
+    const rect=canvas.getBoundingClientRect();
+    scratch(e.clientX-rect.left,e.clientY-rect.top);
+});
+
+resetCard();
+</script>
+</body>
+</html>
