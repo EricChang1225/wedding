@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>幸福關鍵詞</title>
+<style>
+:root{--pink:#df5b78;--soft:#fff5f7;--line:#f4c7d2;--text:#4a2b2b}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Microsoft JhengHei","PingFang TC",Arial,sans-serif;background:linear-gradient(180deg,#fff6f8,#fff);color:var(--text);min-height:100vh}
+.wrap{max-width:520px;margin:auto;padding:20px 16px 40px}
+.card{background:white;border:1px solid #f7d5dd;border-radius:28px;box-shadow:0 12px 35px rgba(205,88,118,.18);padding:24px 18px;overflow:hidden}
+.hero{text-align:center;position:relative}
+h1{margin:10px 0 8px;font-size:38px;letter-spacing:3px;color:var(--pink)}
+.subtitle{display:inline-block;background:linear-gradient(90deg,#f47792,#d94f70);color:white;padding:9px 20px;border-radius:999px;font-size:17px;font-weight:bold;margin-bottom:14px}
+.desc{line-height:1.8;font-size:16px;margin:8px 0 20px}
+.panel{border:2px solid var(--line);border-radius:22px;padding:18px;margin-top:16px;background:#fff}
+label{display:block;text-align:left;font-weight:bold;margin:12px 0 6px;color:#8a4655}
+input{width:100%;border:1.8px solid #f0bdc9;border-radius:12px;padding:13px 14px;font-size:17px;outline:none}
+button{width:100%;border:0;background:linear-gradient(135deg,#e45f7c,#cf3f63);color:white;border-radius:16px;padding:15px 18px;font-size:18px;font-weight:bold;margin-top:16px;box-shadow:0 8px 16px rgba(210,65,96,.25)}
+button.secondary{background:#fff;color:#d94f70;border:2px solid #f0bdc9;box-shadow:none}
+button.small{width:auto;padding:10px 14px;font-size:15px;margin:6px}
+.scratchBox{position:relative;width:100%;height:230px;margin:18px auto 10px;border-radius:24px;overflow:hidden;border:2px solid var(--line);background:#fff}
+.result{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at center,#ffe6ec 0,#fff 60%)}
+.heart{width:158px;height:140px;background:linear-gradient(135deg,#ff9aad,#f06b86);transform:rotate(-45deg);position:relative;margin:15px auto 8px}
+.heart:before,.heart:after{content:"";width:158px;height:140px;background:inherit;border-radius:50%;position:absolute}
+.heart:before{top:-78px;left:0}.heart:after{left:78px;top:0}
+.word{position:absolute;z-index:2;transform:rotate(45deg);color:#a9223d;font-size:27px;font-weight:bold;white-space:nowrap;left:50%;top:50%;translate:-50% -50%}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.status{margin-top:14px;background:#fff2f5;border:1px solid #f4c7d2;padding:12px;border-radius:16px;line-height:1.7}
+.keywordList{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.kw{background:#fff8fa;border:1px solid #f2c4ce;border-radius:14px;padding:10px 6px;font-weight:bold;text-align:center}
+.step{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:10px 0;border-bottom:1px dashed #f1c5cf}
+.step:last-child{border-bottom:0}
+.num{min-width:34px;height:34px;border-radius:50%;background:var(--pink);color:white;display:flex;align-items:center;justify-content:center;font-weight:bold}
+.hidden{display:none!important}
+.bigWin{font-size:28px;color:#d63f63;font-weight:bold}
+.footer{text-align:center;margin-top:18px;color:#c35d73;font-weight:bold}
+.notice{font-size:13px;color:#8a7777;line-height:1.6}
+.adminBar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+@media (max-width:380px){h1{font-size:32px}.scratchBox{height:205px}.keywordList{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<div class="hero">
+<div style="font-size:42px">💍</div>
+<h1>幸福關鍵詞</h1>
+<div class="subtitle">尋找與新人最有默契的人</div>
+<p class="desc">請刮開你的幸福關鍵詞，等待新人揭曉今日關鍵詞。關鍵詞相同者，即可領取幸福好禮！</p>
+</div>
+
+<div id="modeGuest">
+<div id="formPanel" class="panel">
+<label>請輸入桌號</label>
+<input id="tableNo" placeholder="例如：12桌" />
+<label>請輸入姓名或暱稱</label>
+<input id="guestName" placeholder="例如：王小明" />
+<button onclick="startGuest()">開始刮卡</button>
+<p class="notice">每支手機只能刮一次。若重開頁面，會保留第一次結果。</p>
+</div>
+
+<div id="guestPanel" class="panel hidden">
+<h2>刮出你的愛情關鍵詞</h2>
+<div class="scratchBox">
+<div class="result">
+<div class="heart"><div id="guestWord" class="word"></div></div>
+<div>你的幸福關鍵詞</div>
+</div>
+<canvas id="guestCanvas"></canvas>
+</div>
+<div id="guestStatus" class="status">請用手指刮開灰色區域。</div>
+<button class="secondary" onclick="showMyResult()">查看我的結果</button>
+</div>
+</div>
+
+<div id="modeAdmin" class="hidden">
+<div class="panel">
+<h2>新人幸福關鍵詞揭曉</h2>
+<p>請新郎新娘一起刮開今日關鍵詞。</p>
+<div class="scratchBox">
+<div class="result">
+<div class="heart"><div id="adminWord" class="word"></div></div>
+<div>今日幸福關鍵詞</div>
+</div>
+<canvas id="adminCanvas"></canvas>
+</div>
+<div id="adminStatus" class="status">請新人一起刮開，揭曉今日關鍵詞。</div>
+<div class="adminBar">
+<button class="small" onclick="resetTodayWord()">重新產生今日詞</button>
+<button class="small secondary" onclick="copyWinnerText()">複製主持稿</button>
+</div>
+<p class="notice">純 HTML 版本沒有雲端資料庫，無法跨手機自動統計名單；適合投影揭曉與現場核對。</p>
+</div>
+</div>
+
+<div class="panel">
+<h2>遊戲流程</h2>
+<div class="step"><div class="num">1</div><div><b>賓客刮卡</b><br>輸入桌號與姓名，刮出自己的幸福關鍵詞。</div></div>
+<div class="step"><div class="num">2</div><div><b>新人刮卡</b><br>新人一起刮開今日關鍵詞。</div></div>
+<div class="step"><div class="num">3</div><div><b>揭曉答案</b><br>主持人公布今日幸福關鍵詞。</div></div>
+<div class="step"><div class="num">4</div><div><b>尋找默契王</b><br>關鍵詞相同者舉起手機。</div></div>
+<div class="step"><div class="num">5</div><div><b>領取好禮</b><br>請中獎賓客至舞台前領獎。</div></div>
+</div>
+
+<div class="panel">
+<h2>愛情關鍵詞</h2>
+<div class="keywordList" id="keywordList"></div>
+</div>
+
+<div class="footer">祝大家幸福滿滿！與新人一起分享這份喜悅！</div>
+</div>
+</div>
+
+<script>
+const keywords=["百年好合","永浴愛河","天作之合","佳偶天成","白頭偕老","永結同心","琴瑟和鳴","幸福美滿","甜甜蜜蜜","相知相守"];
+const GUEST_KEY="happy_keyword_guest_v3";
+const ADMIN_KEY="happy_keyword_today_v3";
+
+function pickWord(){return keywords[Math.floor(Math.random()*keywords.length)]}
+function initKeywordList(){document.getElementById("keywordList").innerHTML=keywords.map(k=>'<div class="kw">❤️ '+k+'</div>').join("")}
+function isAdmin(){return location.search.includes("admin=1") || location.hash==="#admin"}
+
+function resizeCanvas(canvas){
+  const box=canvas.parentElement, dpr=window.devicePixelRatio||1;
+  canvas.width=box.clientWidth*dpr; canvas.height=box.clientHeight*dpr;
+  canvas.style.width=box.clientWidth+"px"; canvas.style.height=box.clientHeight+"px";
+  const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0); drawCover(canvas);
+}
+function drawCover(canvas){
+  const ctx=canvas.getContext("2d"), w=canvas.clientWidth, h=canvas.clientHeight;
+  ctx.globalCompositeOperation="source-over";
+  const grad=ctx.createLinearGradient(0,0,w,h);
+  grad.addColorStop(0,"#d9d9d9"); grad.addColorStop(.5,"#bfbfbf"); grad.addColorStop(1,"#eeeeee");
+  ctx.fillStyle=grad; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="rgba(255,255,255,.55)";
+  for(let i=0;i<60;i++){ctx.beginPath();ctx.arc(Math.random()*w,Math.random()*h,Math.random()*2+1,0,Math.PI*2);ctx.fill()}
+  ctx.fillStyle="#fff"; ctx.font="bold 26px Microsoft JhengHei, sans-serif"; ctx.textAlign="center";
+  ctx.fillText("用手指刮開",w/2,h/2-5); ctx.font="18px Microsoft JhengHei, sans-serif"; ctx.fillText("幸福即將揭曉",w/2,h/2+28);
+}
+function enableScratch(canvas,onDone){
+  let drawing=false,done=false; const ctx=canvas.getContext("2d");
+  function scratchAt(clientX,clientY){
+    const rect=canvas.getBoundingClientRect(), x=clientX-rect.left, y=clientY-rect.top;
+    ctx.globalCompositeOperation="destination-out"; ctx.beginPath(); ctx.arc(x,y,24,0,Math.PI*2); ctx.fill();
+    if(!done && clearedPercent(canvas)>45){done=true;ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);onDone&&onDone()}
+  }
+  canvas.addEventListener("pointerdown",e=>{drawing=true;scratchAt(e.clientX,e.clientY)});
+  canvas.addEventListener("pointermove",e=>{if(drawing)scratchAt(e.clientX,e.clientY)});
+  window.addEventListener("pointerup",()=>drawing=false);
+}
+function clearedPercent(canvas){
+  const ctx=canvas.getContext("2d"), data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  let clear=0; for(let i=3;i<data.length;i+=16){if(data[i]===0)clear++}
+  return clear/(data.length/16)*100;
+}
+function startGuest(){
+  const tableNo=document.getElementById("tableNo").value.trim(), guestName=document.getElementById("guestName").value.trim();
+  if(!tableNo||!guestName){alert("請先輸入桌號與姓名");return}
+  if(localStorage.getItem(GUEST_KEY)){alert("這支手機已經刮過卡囉！");loadGuest();return}
+  const data={tableNo,guestName,word:pickWord(),time:new Date().toISOString()};
+  localStorage.setItem(GUEST_KEY,JSON.stringify(data)); loadGuest(true);
+}
+function loadGuest(fresh=false){
+  const raw=localStorage.getItem(GUEST_KEY); if(!raw)return; const data=JSON.parse(raw);
+  document.getElementById("formPanel").classList.add("hidden");
+  document.getElementById("guestPanel").classList.remove("hidden");
+  document.getElementById("guestWord").textContent=data.word;
+  document.getElementById("guestStatus").innerHTML=fresh?"請用手指刮開灰色區域。":"您已完成抽取。<br>桌號："+data.tableNo+"　姓名："+data.guestName+"<br>您的關鍵詞：❤️ "+data.word;
+  setTimeout(()=>{const c=document.getElementById("guestCanvas");resizeCanvas(c);enableScratch(c,()=>{document.getElementById("guestStatus").innerHTML="已完成抽取。<br>請等待新人公布今日關鍵詞。<br><b>您的關鍵詞：❤️ "+data.word+"</b>"})},80);
+}
+function showMyResult(){
+  const raw=localStorage.getItem(GUEST_KEY); if(!raw)return; const data=JSON.parse(raw);
+  alert("桌號："+data.tableNo+"\n姓名："+data.guestName+"\n你的幸福關鍵詞："+data.word);
+}
+function initAdmin(){
+  document.getElementById("modeGuest").classList.add("hidden");
+  document.getElementById("modeAdmin").classList.remove("hidden");
+  let word=localStorage.getItem(ADMIN_KEY); if(!word){word=pickWord();localStorage.setItem(ADMIN_KEY,word)}
+  document.getElementById("adminWord").textContent=word;
+  setTimeout(()=>{const c=document.getElementById("adminCanvas");resizeCanvas(c);enableScratch(c,()=>{document.getElementById("adminStatus").innerHTML='<div class="bigWin">今日幸福關鍵詞：❤️ '+word+'</div><br>請刮到相同關鍵詞的貴賓舉起手機！'})},80);
+}
+function resetTodayWord(){
+  if(!confirm("確定要重新產生今日關鍵詞嗎？"))return;
+  const word=pickWord(); localStorage.setItem(ADMIN_KEY,word);
+  document.getElementById("adminWord").textContent=word;
+  document.getElementById("adminStatus").textContent="請新人一起刮開，揭曉今日關鍵詞。";
+  resizeCanvas(document.getElementById("adminCanvas"));
+}
+function copyWinnerText(){
+  const word=localStorage.getItem(ADMIN_KEY)||document.getElementById("adminWord").textContent;
+  const text="今晚的幸福關鍵詞是："+word+"！請刮到「"+word+"」的貴賓舉起手機，恭喜您與新人最有默契，請至舞台前領取幸福好禮！";
+  if(navigator.clipboard){navigator.clipboard.writeText(text)}
+  alert(text);
+}
+window.addEventListener("resize",()=>{document.querySelectorAll("canvas").forEach(c=>resizeCanvas(c))});
+initKeywordList(); if(isAdmin())initAdmin(); else loadGuest();
+</script>
+</body>
+</html>
