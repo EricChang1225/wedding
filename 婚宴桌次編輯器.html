@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>婚宴桌次編輯器</title>
+<style>
+  :root{--pink:#ee6a9a;--light:#fde7ef;--gold:#d8a516}
+  body{margin:0;font-family:"Microsoft JhengHei",Arial,sans-serif;background:#fff7fb;color:#111}
+  .toolbar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:2px solid var(--pink);padding:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button,input,select{font-size:15px;padding:7px 10px;border:1.5px solid var(--pink);border-radius:8px;background:white}
+  button{cursor:pointer;background:var(--light);font-weight:700}
+  button:hover{filter:brightness(.96)}
+  .wrap{padding:14px}
+  #canvas{position:relative;width:1480px;height:940px;background:#fff;border:3px solid var(--pink);border-radius:22px;transform-origin:top left;overflow:hidden}
+  .stage{position:absolute;left:505px;top:30px;width:455px;height:82px;border:3px solid var(--pink);border-radius:12px;background:var(--light);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:900}
+  .main{position:absolute;left:655px;top:140px;width:150px;height:150px;border:4px solid var(--pink);border-radius:50%;background:var(--light);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:35px;line-height:1.1;cursor:move}
+  .main span{font-size:24px;font-weight:500;margin-top:8px}
+  .table{position:absolute;width:110px;height:110px;border:3px solid var(--pink);border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:move;user-select:none}
+  .table.reserved{border-style:dashed;border-color:var(--gold)}
+  .num{font-size:39px;font-weight:900;line-height:1}
+  .pax{font-size:21px;margin-top:7px}
+  .note{font-size:19px;line-height:1;margin-top:2px}
+  .selected{box-shadow:0 0 0 5px rgba(238,106,154,.25)}
+  .arrow{position:absolute;color:var(--pink);font-size:78px;font-weight:900;line-height:1}
+  .bottom-note{position:absolute;left:350px;bottom:0;color:var(--pink);font-size:24px;font-weight:800;text-decoration:line-through}
+  .hint{font-size:13px;color:#555}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="addTable()">＋新增桌</button>
+  <button onclick="deleteSelected()">刪除選取</button>
+  <button onclick="renumberLeft()">左區重新編號</button>
+  <button onclick="saveLayout()">儲存</button>
+  <button onclick="loadLayout()">讀取</button>
+  <button onclick="resetLayout()">還原預設</button>
+  <button onclick="exportPNG()">匯出PNG</button>
+  <label>縮放 <input id="zoom" type="range" min="45" max="100" value="75" oninput="setZoom(this.value)"></label>
+  <span class="hint">操作：拖曳桌子移動；點桌子後可改桌號、人數、備註、預留桌。</span>
+</div>
+
+<div class="toolbar" id="editor">
+  <b>選取桌：</b>
+  <label>桌號 <input id="eNum" style="width:60px" oninput="updateSelected()"></label>
+  <label>人數 <input id="ePax" style="width:60px" oninput="updateSelected()"></label>
+  <label>備註 <input id="eNote" style="width:90px" oninput="updateSelected()"></label>
+  <label><input type="checkbox" id="eReserved" onchange="updateSelected()"> 預留桌</label>
+</div>
+
+<div class="wrap">
+  <div id="canvas"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+const canvas=document.getElementById('canvas');
+let selected=null, dragging=null, offsetX=0, offsetY=0;
+
+const defaultTables=[
+  ...[[37,70,95,"10人","預留桌",true],[39,220,95,"10人","預留桌",true],[41,370,95,"10人","預留桌",true],
+     [42,1015,95,"10人","",false],[40,1165,95,"10人","",false],[38,1315,95,"10人","",false]],
+  ...[
+    [4,65,295],[3,215,295],[2,365,295],[1,515,295],
+    [8,65,450],[7,215,450],[6,365,450],[5,515,450],
+    [12,65,605],[11,215,605],[10,365,605],[9,515,605],
+    [16,65,760],[15,215,760],[14,365,760],[13,515,760],
+    [17,865,295],[18,1015,295],[19,1165,295],[20,1315,295],
+    [21,865,450],[22,1015,450],[23,1165,450],[24,1315,450],
+    [25,865,605],[26,1015,605],[27,1165,605],[28,1315,605],
+    [29,865,760],[30,1015,760],[31,1165,760],[32,1315,760]
+  ].map(x=>[String(x[0]).padStart(2,'0'),x[1],x[2],"10人","",false])
+];
+
+function init(){
+  canvas.innerHTML = `
+    <div class="stage" contenteditable="true">舞台</div>
+    <div class="main" contenteditable="true">主桌<span>12人</span></div>
+    <div class="arrow" style="left:700px;top:330px;">▲</div>
+    <div class="arrow" style="left:700px;top:505px;">▲</div>
+    <div class="arrow" style="left:700px;top:675px;">▲</div>
+    <div class="arrow" style="left:420px;top:850px;transform:rotate(-90deg)">▲</div>
+    <div class="arrow" style="left:1060px;top:850px;transform:rotate(-90deg)">▲</div>
+    <div class="bottom-note">左區編號：原本04位置改成01，往左依序02、03、04；中間箭頭保留空走道</div>`;
+  defaultTables.forEach(t=>createTable(...t));
+  enableDrag(document.querySelector('.main'));
+  setZoom(75);
+}
+function createTable(num,x,y,pax="10人",note="",reserved=false){
+  const el=document.createElement('div');
+  el.className='table'+(reserved?' reserved':'');
+  el.style.left=x+'px'; el.style.top=y+'px';
+  el.dataset.num=num; el.dataset.pax=pax.replace('人',''); el.dataset.note=note;
+  el.innerHTML=`<div class="num">${num}</div><div class="pax">${pax}</div>${note?`<div class="note">${note}</div>`:''}`;
+  el.onclick=e=>{e.stopPropagation();select(el)};
+  enableDrag(el); canvas.appendChild(el);
+}
+function enableDrag(el){
+  el.onmousedown=e=>{
+    dragging=el; offsetX=e.offsetX; offsetY=e.offsetY; select(el); e.preventDefault();
+  }
+}
+document.onmousemove=e=>{
+  if(!dragging)return;
+  const r=canvas.getBoundingClientRect(), z=parseInt(document.getElementById('zoom').value)/100;
+  dragging.style.left=((e.clientX-r.left)/z-offsetX)+'px';
+  dragging.style.top=((e.clientY-r.top)/z-offsetY)+'px';
+}
+document.onmouseup=()=>dragging=null;
+canvas.onclick=()=>select(null);
+
+function select(el){
+  document.querySelectorAll('.selected').forEach(x=>x.classList.remove('selected'));
+  selected=el;
+  if(el){el.classList.add('selected');
+    document.getElementById('eNum').value=el.dataset.num||'主桌';
+    document.getElementById('ePax').value=el.dataset.pax||'12';
+    document.getElementById('eNote').value=el.dataset.note||'';
+    document.getElementById('eReserved').checked=el.classList.contains('reserved');
+  }
+}
+function updateSelected(){
+  if(!selected || !selected.classList.contains('table')) return;
+  selected.dataset.num=document.getElementById('eNum').value;
+  selected.dataset.pax=document.getElementById('ePax').value;
+  selected.dataset.note=document.getElementById('eNote').value;
+  selected.classList.toggle('reserved',document.getElementById('eReserved').checked);
+  const note=selected.dataset.note;
+  selected.innerHTML=`<div class="num">${selected.dataset.num}</div><div class="pax">${selected.dataset.pax}人</div>${note?`<div class="note">${note}</div>`:''}`;
+}
+function addTable(){createTable('新',720,760,'10人','',false)}
+function deleteSelected(){ if(selected && selected.classList.contains('table')){selected.remove(); selected=null;} }
+function renumberLeft(){
+  const nums=['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16'];
+  const left=[...document.querySelectorAll('.table')].filter(t=>parseFloat(t.style.left)<650 && parseFloat(t.style.top)>250)
+    .sort((a,b)=>parseFloat(a.style.top)-parseFloat(b.style.top)||parseFloat(b.style.left)-parseFloat(a.style.left));
+  left.forEach((t,i)=>{t.dataset.num=nums[i]||t.dataset.num; t.querySelector('.num').textContent=t.dataset.num;});
+}
+function getLayout(){
+  return [...document.querySelectorAll('.table')].map(t=>({num:t.dataset.num,pax:t.dataset.pax,note:t.dataset.note,reserved:t.classList.contains('reserved'),left:t.style.left,top:t.style.top}));
+}
+function saveLayout(){localStorage.setItem('weddingTables',JSON.stringify(getLayout()));alert('已儲存到此瀏覽器')}
+function loadLayout(){
+  const data=JSON.parse(localStorage.getItem('weddingTables')||'[]');
+  if(!data.length) return alert('尚未儲存');
+  initBaseOnly(); data.forEach(t=>createTable(t.num,parseFloat(t.left),parseFloat(t.top),t.pax+'人',t.note,t.reserved));
+}
+function initBaseOnly(){
+  canvas.innerHTML = `
+    <div class="stage" contenteditable="true">舞台</div><div class="main" contenteditable="true">主桌<span>12人</span></div>
+    <div class="arrow" style="left:700px;top:330px;">▲</div><div class="arrow" style="left:700px;top:505px;">▲</div><div class="arrow" style="left:700px;top:675px;">▲</div>
+    <div class="arrow" style="left:420px;top:850px;transform:rotate(-90deg)">▲</div><div class="arrow" style="left:1060px;top:850px;transform:rotate(-90deg)">▲</div>
+    <div class="bottom-note">左區編號：原本04位置改成01，往左依序02、03、04；中間箭頭保留空走道</div>`;
+  enableDrag(document.querySelector('.main'));
+}
+function resetLayout(){localStorage.removeItem('weddingTables');init();}
+function setZoom(v){canvas.style.transform=`scale(${v/100})`;canvas.parentElement.style.height=(940*v/100+30)+'px'}
+function exportPNG(){
+  const z=document.getElementById('zoom').value; setZoom(100);
+  html2canvas(canvas,{backgroundColor:'#ffffff',scale:2}).then(c=>{
+    const a=document.createElement('a'); a.download='婚宴桌次圖.png'; a.href=c.toDataURL(); a.click(); setZoom(z);
+  });
+}
+init();
+</script>
+</body>
+</html>
